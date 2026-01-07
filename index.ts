@@ -7,19 +7,10 @@
 import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 
-// CSS for styling the "gaming" text
-const style = document.createElement("style");
-style.textContent = `
-.vc-gaming-blue {
-    color: #007bff !important;
-    font-weight: bold;
-}
+import { findByPropsLazy } from "@webpack";
 
-/* Target Discord's message content directly */
-.markup__75297 span:not(.vc-gaming-blue) {
-    color: inherit;
-}
-`;
+const MessageClasses = findByPropsLazy("messageContent", "markupRtl");
+const MarkupClasses = findByPropsLazy("markup", "codeContainer");
 
 export default definePlugin({
     name: "GamingBlue",
@@ -27,8 +18,21 @@ export default definePlugin({
     authors: [Devs.Ven],
 
     start() {
-        // Add the CSS to the document
+        // Create and add CSS
+        const style = document.createElement("style");
+        style.textContent = `
+.vc-gaming-blue {
+    color: #007bff !important;
+    font-weight: bold;
+}
+
+/* Target Discord's message content directly */
+.${MarkupClasses.markup} span:not(.vc-gaming-blue) {
+    color: inherit;
+}
+`;
         document.head.appendChild(style);
+        this.style = style;
 
         // Set up the observer to watch for new messages
         this.setupObserver();
@@ -39,7 +43,8 @@ export default definePlugin({
 
     stop() {
         // Remove the CSS from the document
-        style.remove();
+        this.style?.remove();
+        this.style = null;
 
         // Disconnect the observer if it exists
         if (this.observer) {
@@ -51,6 +56,7 @@ export default definePlugin({
         this.revertChanges();
     },
 
+    style: null as HTMLStyleElement | null,
     observer: null as MutationObserver | null,
 
     setupObserver() {
@@ -59,7 +65,8 @@ export default definePlugin({
             for (const mutation of mutations) {
                 if (mutation.type === "childList") {
                     // Check for new message content elements
-                    const messageContents = document.querySelectorAll(".markup__75297.messageContent_c19a55:not(.vc-gaming-processed)");
+                    const selector = `.${MarkupClasses.markup}.${MessageClasses.messageContent}:not(.vc-gaming-processed)`;
+                    const messageContents = document.querySelectorAll(selector);
 
                     for (const messageContent of messageContents) {
                         this.processMessageContent(messageContent as HTMLElement);
@@ -80,7 +87,8 @@ export default definePlugin({
 
     processExistingMessages() {
         // Find all message content elements
-        const messageContents = document.querySelectorAll(".markup__75297.messageContent_c19a55:not(.vc-gaming-processed)");
+        const selector = `.${MarkupClasses.markup}.${MessageClasses.messageContent}:not(.vc-gaming-processed)`;
+        const messageContents = document.querySelectorAll(selector);
 
         for (const messageContent of messageContents) {
             this.processMessageContent(messageContent as HTMLElement);
